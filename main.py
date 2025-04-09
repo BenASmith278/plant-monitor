@@ -18,11 +18,10 @@ class SmartGardenUI(BoxLayout):
     def toggle_power(self, instance):
         if not self.arduino:
             return
-        if self.pump_on:
-            self.arduino.write(b'POWER_OFF\n')
-        else:
-            self.arduino.write(b'POWER_ON\n')
+        command = '1\n' if not self.pump_on else '0\n'
+        self.arduino.write(command.encode('utf-8'))
         self.pump_on = not self.pump_on
+    
 
     def read_data(self, dt):
         if not self.arduino:
