@@ -1,4 +1,4 @@
-<PlantMonitorUI>:
+<SmartGardenUI>:
     orientation: 'vertical'
     padding: 20
     spacing: 10
@@ -23,6 +23,7 @@
         id: pump_status
         text: "Pump: OFF"
     Button:
-        text: "Toggle Pump Power"
+        id: toggle_button
+        text: root.pump_button_text
         font_size: '18sp'
-        on_press: root.toggle_power(self)
+        on_press: root.toggle_power(self)   
