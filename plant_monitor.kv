@@ -1,0 +1,28 @@
+<PlantMonitorUI>:
+    orientation: 'vertical'
+    padding: 20
+    spacing: 10
+
+    Label:
+        id: connection_status
+        text: "Connecting to Arduino..."
+        font_size: '20sp'
+    Label:
+        id: moisture
+        text: "Moisture: "
+    Label:
+        id: temp
+        text: "Temperature: "
+    Label:
+        id: hum
+        text: "Humidity: "
+    Label:
+        id: light
+        text: "Light: "
+    Label:
+        id: pump_status
+        text: "Pump: OFF"
+    Button:
+        text: "Toggle Pump Power"
+        font_size: '18sp'
+        on_press: root.toggle_power(self)
