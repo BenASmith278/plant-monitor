@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Garden Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #f8f9fa;
+      color: #333;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      text-align: center;
+      color: #2a9d8f;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .reading-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 8px 0;
+    }
+
+    .reading-label {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .reading-value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #2a9d8f;
+    }
+
+    .trend-graph {
+      display: none;
+      padding: 12px;
+      background: #f1f3f5;
+      border-radius: 8px;
+      margin-top: 12px;
+      text-align: center;
+      font-style: italic;
+      color: #555;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 500;
+      margin-top: 24px;
+      color: #e76f51;
+    }
+
+    .button, .toggle-button {
+      background-color: #2a9d8f;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin: 0 5px;
+      transition: background 0.3s, transform 0.2s ease;
+    }
+
+    .button:hover, .toggle-button:hover {
+      background-color: #21867a;
+      transform: translateY(-2px);
+    }
+
+    .btn-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .modal-content {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      text-align: center;
+    }
+
+    .modal input {
+      margin: 10px 0;
+      padding: 8px;
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .close {
+      float: right;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Garden Dashboard</h1>
+
+    <div class="card" onclick="toggleTrend('moistureTrend')">
+      <div class="reading-row">
+        <div class="reading-label">Soil Moisture</div>
+        <div class="reading-value">42%</div>
+      </div>
+      <div id="moistureTrend" class="trend-graph">[Graph showing moisture trends]</div>
+    </div>
+
+    <div class="card" onclick="toggleTrend('temperatureTrend')">
+      <div class="reading-row">
+        <div class="reading-label">Temperature</div>
+        <div class="reading-value">22°C</div>
+      </div>
+      <div id="temperatureTrend" class="trend-graph">[Graph showing temperature trends]</div>
+    </div>
+
+    <div class="card" onclick="toggleTrend('humidityTrend')">
+      <div class="reading-row">
+        <div class="reading-label">Humidity</div>
+        <div class="reading-value">55%</div>
+      </div>
+      <div id="humidityTrend" class="trend-graph">[Graph showing humidity trends]</div>
+    </div>
+
+    <div class="card" onclick="toggleTrend('lightTrend')">
+      <div class="reading-row">
+        <div class="reading-label">Light Level</div>
+        <div class="reading-value">678 lx</div>
+      </div>
+      <div id="lightTrend" class="trend-graph">[Graph showing light level trends]</div>
+    </div>
+
+    <div class="card" onclick="toggleTrend('reservoirTrend')">
+      <div class="reading-row">
+        <div class="reading-label">Water Reservoir</div>
+        <div class="reading-value">Full</div>
+      </div>
+      <div id="reservoirTrend" class="trend-graph">[Graph showing reservoir trends]</div>
+    </div>
+
+    <div class="status">🌱 Plant is happy and healthy!</div>
+
+    <div class="btn-container">
+      <button class="toggle-button" id="pumpBtn" onclick="togglePump()">💧 Turn Pump ON</button>
+      <button class="button" onclick="openPresetModal()">⚙️ Change Preset Values</button>
+    </div>
+  </div>
+
+  <div id="presetModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closePresetModal()">&times;</span>
+      <h3>Change Preset Values</h3>
+      <input type="number" placeholder="Soil Moisture Threshold" />
+      <input type="number" placeholder="Temperature Threshold" />
+      <input type="number" placeholder="Humidity Threshold" />
+      <input type="number" placeholder="Light Level Threshold" />
+      <input type="number" placeholder="Reservoir Level Threshold" />
+      <button class="button" style="margin-top: 12px;">Save</button>
+    </div>
+  </div>
+
+  <script>
+    function openPresetModal() {
+      document.getElementById('presetModal').style.display = 'flex';
+    }
+    function closePresetModal() {
+      document.getElementById('presetModal').style.display = 'none';
+    }
+    function toggleTrend(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    let pumpOn = false;
+    function togglePump() {
+      pumpOn = !pumpOn;
+      const btn = document.getElementById("pumpBtn");
+      btn.innerText = pumpOn ? "Turn Pump OFF" : "Turn Pump ON";
+    }
+  </script>
+</body>
+</html>
