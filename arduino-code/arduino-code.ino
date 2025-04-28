@@ -18,6 +18,7 @@ int humidity;
 int lightLevel;
 int resLevel;
 int moisture;
+int moistureAverage = 512;
 bool pumpPower = false;
 String lastError = "None";
 String error = "None";
@@ -33,6 +34,7 @@ void setup() {
   pinMode(pumpPowerPin, OUTPUT);
 
   if (!soilSensor.begin(0x36)) {
+    // make this error persist on the front end
     setError("Soil moisture sensor not found! Check connections and restart.");
     // set moisture to moisture threshold to avoid constant watering
     moisture = moistureThreshold;
@@ -40,20 +42,23 @@ void setup() {
 }
 
 void loop() {
+  unsigned long startTime = millis();
+  
   // stop pump at start of every loop to avoid runaway
   stopPump();
+  
   // clear errors so only recent ones show
   error = "None";
   lastError = "None";
-
-  unsigned long startTime = millis();
 
   readDHT11(temperature, humidity);
   readSoilSensor(moisture);
   readLightLevel(lightLevel);
   readResevoirLevel(resLevel);
 
-  if (moisture < moistureThreshold) {
+  // calculate moving average of last 10 moisture readings to avoid watering while water is propogating
+  moistureAverage = (moistureAverage * 9 + moisture) / 10;
+  if (moisture < moistureThreshold && abs(moisture - moistureAverage) < 10) {
     // if watering interval has elapsed
     if ((millis() - lastWatering) > wateringInterval) {
       startPump();
@@ -102,6 +107,7 @@ void readDHT11(int &temperature, int &humidity) {
   } else {
     // average the three readings
     // only update temperature and humidity if all valid
+    // dont check expected range since the library deals with errors
     temperature = tempSum / 3;
     humidity = humSum / 3;
   }
@@ -113,7 +119,12 @@ void readSoilSensor(int &moisture) {
     readings += soilSensor.touchRead(0);
   }
   
-  moisture = readings / 3;
+  readings /= 3;
+  // check that measurement is in expected range
+  if (readings < 0 || readings > 1024) {
+    return;
+  }
+  moisture = readings;
 }
 
 void readLightLevel(int &light) {
@@ -122,7 +133,12 @@ void readLightLevel(int &light) {
     readings += analogRead(photoResPin);
   }
 
-  light = readings / 3;
+  readings /= 3;
+  // check that measurement is in expected range
+  if (readings < 0 || readings > 1024) {
+    return;
+  }
+  light = readings;
 }
 
 void readResevoirLevel(int &level) {
@@ -137,7 +153,13 @@ void readResevoirLevel(int &level) {
   }
 
   digitalWrite(resSensorPower, LOW);
-  level = readings / 3;
+  
+  readings /= 3;
+  // check that the measurement is in the expected range
+  if (readings < 0 || readings > 128) {
+    return;
+  }
+  level = readings;
 }
 
 void startPump() {
