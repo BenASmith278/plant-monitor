@@ -1,3 +1,8 @@
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from .models import Measurement
 from django.shortcuts import render
 from django.views.generic import ListView, DetailView
 
@@ -19,3 +24,25 @@ def index(request):
 #         context = super().get_context_data(**kwargs)
 #         context['warnings'] = Warning.objects.filter(measurement=self.object)
 #         return context
+
+
+
+@csrf_exempt
+def receive_sensor_data(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            Measurement.objects.create(
+                temperature=data['temperature'],
+                humidity=data['humidity'],
+                light=data['light'],
+                soil_moisture=data['moisture'],
+                pump_power=data['pump_power'],
+                reservoir_level=data['res_level'],
+                errors=', '.join(data['errors'])  # joining the error list as a string
+            )
+            return JsonResponse({'status': 'success'}, status=201)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    else:
+        return JsonResponse({'status': 'only POST allowed'}, status=405)
