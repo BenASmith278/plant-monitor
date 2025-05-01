@@ -43,18 +43,9 @@ void setup() {
 
 void loop() {
   unsigned long startTime = millis();
-  
+
   // stop pump at start of every loop to avoid runaway
   stopPump();
-  
-  // clear errors so only recent ones show
-  error = "None";
-  lastError = "None";
-
-  readDHT11(temperature, humidity);
-  readSoilSensor(moisture);
-  readLightLevel(lightLevel);
-  readResevoirLevel(resLevel);
 
   // calculate moving average of last 10 moisture readings to avoid watering while water is propogating
   moistureAverage = (moistureAverage * 9 + moisture) / 10;
@@ -65,8 +56,36 @@ void loop() {
     }
   }
 
+  // check for incoming message
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    if (command == "manual_water") {
+      startPump();
+    } else if (command.startsWith("threshold:")) {
+      moistureThreshold = command.substring(10).toInt();
+    }
+  }
+  
+  // clear errors so only recent ones show
+  error = "None";
+  lastError = "None";
+
+  readDHT11(temperature, humidity);
+  readSoilSensor(moisture);
+  readLightLevel(lightLevel);
+  readResevoirLevel(resLevel);
+
+  printToSerial();
+  
+  // adjust for reading time so readings happen on a consistent interval
+  unsigned long endTime = millis();
+  unsigned long duration = endTime - startTime;
+  delay(twoSeconds - duration);
+}
+
+void printToSerial() {
   // print out to pi
-  // no need for JSON library
+  // no need for JSON library but it might make this easier to read
   Serial.print("{\"moisture\":");
   Serial.print(moisture);
   Serial.print(", \"light\":");
@@ -85,11 +104,6 @@ void loop() {
   Serial.print(lastError);
   Serial.print("\"]");
   Serial.println("}");
-  
-  // adjust for reading time so readings happen on a consistent interval
-  unsigned long endTime = millis();
-  unsigned long duration = endTime - startTime;
-  delay(twoSeconds - duration);
 }
 
 void readDHT11(int &temperature, int &humidity) {
