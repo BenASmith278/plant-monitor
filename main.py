@@ -47,7 +47,7 @@ class SmartGardenUI(BoxLayout):
         if not self.arduino:
             return
         try:
-            self.arduino.write(b"1\n")
+            self.arduino.write(b"manual_water\n")
         except Exception as e:
             self.show_connection_error()
 
