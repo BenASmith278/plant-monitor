@@ -36,21 +36,21 @@ def index(request):
             "id": "temperature",
             "label": "Temperature",
             "value": f"{latest.temperature}°C" if latest else "N/A",
-            "preset": "-",
+            
             "warning": False
         },
         {
             "id": "humidity",
             "label": "Humidity",
             "value": f"{latest.humidity}%" if latest else "N/A",
-            "preset": "-",
+            
             "warning": False
         },
         {
             "id": "light",
             "label": "Light Level",
             "value": f"{latest.light} lx" if latest else "N/A",
-            "preset": "-",
+            
             "warning": False
         },
         {
