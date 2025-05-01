@@ -25,3 +25,11 @@ class Warning(models.Model):
 
     def __str__(self):
         return f"Warning: {self.message} at {self.timestamp}"
+
+
+class ThresholdPreset(models.Model):
+    moisture_threshold = models.IntegerField(default=350)
+    reservoir_threshold = models.IntegerField(default=8)
+
+    def __str__(self):
+        return "Preset Thresholds"
