@@ -9,6 +9,10 @@
   <script defer src="{% static 'plantmonitor/dashboard.js' %}"></script>
   <title>Smart Garden Dashboard</title>
 </head>
+<script>
+  const moistureThreshold = "{{ moisture_threshold }}";
+  const reservoirThreshold = "{{ reservoir_threshold }}";
+</script>
 <body>
   <div class="container">
     <h1>Smart Garden Dashboard</h1>

@@ -6,7 +6,18 @@ const chartConfigs = [
   { id: 'lightChart', label: 'Light Level', key: 'light' },
   { id: 'reservoirChart', label: 'Reservoir Level', key: 'reservoir_level' }
 ];
-
+function updateWithWarning(id, value, threshold, unit = '') {
+    const el = document.getElementById(id + "Value");
+    if (!el) return;
+  
+    let warning = '';
+    if (!isNaN(value) && Number(value) < threshold) {
+      warning = '<span style="color: red;">⚠ Needs Attention</span>';
+    }
+  
+    el.innerHTML = `${value}${unit} ${warning}`;
+  }
+  
 async function fetchLatest() {
   const res = await fetch('/api/latest/');
   return await res.json();
@@ -15,11 +26,11 @@ async function fetchLatest() {
 async function updateSensorValues() {
   const data = await fetchLatest();
 
-  document.getElementById('moistureValue').textContent = `${data.soil_moisture}%`;
   document.getElementById('temperatureValue').textContent = `${data.temperature}°C`;
   document.getElementById('humidityValue').textContent = `${data.humidity}%`;
   document.getElementById('lightValue').textContent = `${data.light} lx`;
-  document.getElementById('reservoirValue').textContent = `${Math.round(data.reservoir_level / 128 * 100)}%`;
+  updateWithWarning("moisture", data.soil_moisture, moistureThreshold, '/ 1024');
+  updateWithWarning("reservoir", data.reservoir_level, reservoirThreshold, '%');
 
   const plantStatus = document.getElementById('plantStatus');
   if (data.soil_moisture >= data.moisture_threshold) {

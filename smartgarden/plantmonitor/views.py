@@ -28,8 +28,8 @@ def index(request):
         {
             "id": "moisture",
             "label": "Soil Moisture",
-            "value": f"{latest.soil_moisture}%" if latest else "N/A",
-            "preset": f"{preset.moisture_threshold}%",
+            "value": f"{latest.soil_moisture}" if latest else "N/A",
+            "preset": f"{preset.moisture_threshold}",
             "warning": latest and latest.soil_moisture < preset.moisture_threshold,
         },
         {
@@ -56,7 +56,7 @@ def index(request):
         {
             "id": "reservoir",
             "label": "Water Reservoir",
-            "value": f"{int(latest.reservoir_level / 128 * 100)}%" if latest else "N/A",
+            "value": f"{latest.reservoir_level}" if latest else "N/A",
             "preset": f"{preset.reservoir_threshold}/128",
             "warning": latest and latest.reservoir_level < preset.reservoir_threshold,
         }
