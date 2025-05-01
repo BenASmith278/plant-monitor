@@ -5,8 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="{% static 'plantmonitor/style.css' %}" />
-  <title>Smart Garden Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="{% static 'plantmonitor/dashboard.js' %}"></script>
+  <title>Smart Garden Dashboard</title>
 </head>
 <body>
   <div class="container">
@@ -19,12 +20,11 @@
       <p style="color: orange; font-weight: bold;">⚠️ Please set your preset thresholds to begin monitoring.</p>
     {% endif %}
 
-    <!-- Sensor Cards -->
     {% for sensor in sensors %}
     <div class="card" onclick="toggleTrend('{{ sensor.id }}Trend')">
       <div class="reading-row">
         <div class="reading-label">{{ sensor.label }}</div>
-        <div class="reading-value">
+        <div class="reading-value" id="{{ sensor.id }}Value">
           {{ sensor.value }}
           {% if sensor.warning %}
             <span style="color: red;">⚠ Needs Attention</span>
@@ -38,16 +38,14 @@
     </div>
     {% endfor %}
 
-    <!-- Plant Status -->
-    <div class="status">
+    <div class="status" id="plantStatus">
       {% if latest.soil_moisture >= moisture_threshold %}
-        🌱 Plant is happy and healthy!
+        🌱 Plant is happy and healthy!x
       {% else %}
         🥀 Plant is not happy!
       {% endif %}
     </div>
 
-    <!-- Pump Controls -->
     <div class="btn-container">
       <form method="POST" action="/api/trigger-pump/" onsubmit="return checkConnection();">
         {% csrf_token %}
@@ -56,12 +54,10 @@
         </button>
       </form>
       <p id="pumpMessage" style="text-align:center; margin-top: 0.5em;"></p>
-
       <button class="button" onclick="openPresetModal()">⚙️ Change Preset Values</button>
     </div>
   </div>
 
-  <!-- Preset Modal -->
   <div id="presetModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closePresetModal()">&times;</span>
@@ -76,87 +72,5 @@
       </form>
     </div>
   </div>
-
-  <!-- JavaScript -->
-  <script>
-    function openPresetModal() {
-      document.getElementById('presetModal').style.display = 'flex';
-    }
-    function closePresetModal() {
-      document.getElementById('presetModal').style.display = 'none';
-    }
-    function toggleTrend(id) {
-      const el = document.getElementById(id);
-      el.style.display = el.style.display === 'block' ? 'none' : 'block';
-    }
-    function checkConnection() {
-      const isConnected = "{{ is_connected|yesno:'true,false' }}";
-      if (isConnected === "false") {
-        document.getElementById("pumpMessage").innerText = "❌ Not connected to plant system.";
-        return false;
-      }
-      setTimeout(() => {
-        document.getElementById("pumpMessage").innerText = "✅ Pump turned on!";
-        setTimeout(() => {
-          document.getElementById("pumpMessage").innerText = "";
-        }, 5000);
-      }, 500);
-      return true;
-    }
-  </script>
-
-  <!-- Chart Script -->
-  <script>
-    const charts = {};
-    const chartConfigs = [
-      { id: 'moistureChart', label: 'Soil Moisture', key: 'soil_moisture' },
-      { id: 'temperatureChart', label: 'Temperature', key: 'temperature' },
-      { id: 'humidityChart', label: 'Humidity', key: 'humidity' },
-      { id: 'lightChart', label: 'Light Level', key: 'light' },
-      { id: 'reservoirChart', label: 'Reservoir Level', key: 'reservoir_level' }
-    ];
-
-    async function fetchChartData() {
-      const res = await fetch('/api/chart-data/');
-      return await res.json();
-    }
-
-    async function updateCharts() {
-      const data = await fetchChartData();
-      chartConfigs.forEach(cfg => {
-        const ctx = document.getElementById(cfg.id).getContext('2d');
-        if (!charts[cfg.id]) {
-          charts[cfg.id] = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: data.timestamps,
-              datasets: [{
-                label: cfg.label,
-                data: data[cfg.key],
-                borderColor: 'blue',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.3
-              }]
-            },
-            options: {
-              responsive: true,
-              scales: {
-                x: { title: { display: true, text: 'Time' }},
-                y: { beginAtZero: true }
-              }
-            }
-          });
-        } else {
-          charts[cfg.id].data.labels = data.timestamps;
-          charts[cfg.id].data.datasets[0].data = data[cfg.key];
-          charts[cfg.id].update();
-        }
-      });
-    }
-
-    updateCharts();
-    setInterval(updateCharts, 180000); // every 3 mins
-  </script>
 </body>
 </html>

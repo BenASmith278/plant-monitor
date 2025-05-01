@@ -97,8 +97,7 @@ def trigger_pump(request):
     global manual_trigger
     if request.method == 'POST':
         manual_trigger = True
-        return JsonResponse({'status': 'ok'})
-    return JsonResponse({'status': 'error'}, status=405)
+        return redirect('index')
 
 
 def poll_pump_command(request):
@@ -166,3 +165,21 @@ def get_chart_data(request):
 
 def avg(values):
     return round(sum(values) / len(values), 2) if values else 0
+
+
+
+def get_latest_data(request):
+    latest = Measurement.objects.order_by('-timestamp').first()
+    preset = ThresholdPreset.objects.first()
+    
+    if not latest:
+        return JsonResponse({"error": "No data available"}, status=404)
+
+    return JsonResponse({
+        "soil_moisture": latest.soil_moisture,
+        "temperature": latest.temperature,
+        "humidity": latest.humidity,
+        "light": latest.light,
+        "reservoir_level": latest.reservoir_level,
+        "moisture_threshold": preset.moisture_threshold if preset else 400
+    })
