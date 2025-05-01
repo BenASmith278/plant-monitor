@@ -1,29 +1,50 @@
 <SmartGardenUI>:
     orientation: 'vertical'
     padding: 20
-    spacing: 10
+    spacing: 20
 
     Label:
         id: connection_status
         text: "Connecting to Arduino..."
+        font_size: '18sp'
+        color: (0.5, 0.5, 0.5, 1)
+        size_hint_y: None
+        height: '30dp'
+
+    Label:
+        id: status_message
+        text: "Plant status will appear here"
         font_size: '20sp'
-    Label:
-        id: moisture
-        text: "Moisture: "
-    Label:
-        id: temp
-        text: "Temperature: "
-    Label:
-        id: hum
-        text: "Humidity: "
-    Label:
-        id: light
-        text: "Light: "
-    Label:
-        id: pump_status
-        text: "Pump: OFF"
+        size_hint_y: None
+        height: '30dp'
+
+    GridLayout:
+        cols: 2
+        spacing: 10
+        row_default_height: '35dp'
+        size_hint_y: None
+        height: self.minimum_height
+
+        Label:
+            text: "Soil Moisture:"
+            font_size: '18sp'
+        Label:
+            id: moisture
+            text: "N/A"
+            font_size: '18sp'
+
+        Label:
+            text: "Water Reservoir:"
+            font_size: '18sp'
+        Label:
+            id: reservoir
+            text: "N/A"
+            font_size: '18sp'
+
     Button:
         id: toggle_button
         text: root.pump_button_text
-        font_size: '18sp'
-        on_press: root.toggle_power(self)   
+        font_size: '20sp'
+        size_hint: (1, None)
+        height: '50dp'
+        on_press: root.toggle_power(self)

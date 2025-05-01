@@ -4,66 +4,93 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import StringProperty
+from kivy.lang import Builder
+from time import time
+
+MOISTURE_THRESHOLD = 200
 
 
 class SmartGardenUI(BoxLayout):
-    pump_button_text = StringProperty("Turn Pump ON")  # Initially OFF
+    pump_button_text = StringProperty("Turn Pump ON")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.arduino = None
-        self.pump_on = False
+        self.last_data = {}
+        self.last_successful_read = 0  
 
-        try:
-            self.arduino = serial.Serial("/dev/ttyACM0", 9600, timeout=1)
-        except Exception as e:
-            print(f"Failed to connect to Arduino: {e}")
-            Clock.schedule_once(lambda dt: self.show_connection_error(), 0)
-
+        self.connect_arduino()
+        Clock.schedule_interval(self.check_connection, 10)
         Clock.schedule_interval(self.read_data, 2)
 
-    def show_connection_error(self):
+    def connect_arduino(self):
         try:
-            self.ids.connection_status.text = "Not connected to Arduino"
+            self.arduino = serial.Serial("/dev/ttyACM1", 9600, timeout=1)
+            self.ids.connection_status.text = "Connected to Arduino"
+            self.ids.connection_status.color = (0.2, 0.6, 0.2, 1)
         except Exception as e:
-            print(f"UI not ready to show connection error: {e}")
+            self.arduino = None
+            self.show_connection_error()
+
+    def check_connection(self, dt):
+        if time() - self.last_successful_read > 10:
+            self.show_connection_error()
+        else:
+            self.ids.connection_status.text = "Connected to Arduino"
+            self.ids.connection_status.color = (0.2, 0.6, 0.2, 1)
+
+    def show_connection_error(self):
+        self.ids.connection_status.text = "Waiting to connect to Arduino"
+        self.ids.connection_status.color = (1, 0, 0, 1)
 
     def toggle_power(self, instance):
         if not self.arduino:
             return
-        command = b"1\n" if not self.pump_on else b"0\n"
-        self.arduino.write(command)
-        self.pump_on = not self.pump_on
-        self.pump_button_text = "Turn Pump OFF" if self.pump_on else "Turn Pump ON"
+        try:
+            self.arduino.write(b"1\n")
+        except Exception as e:
+            self.show_connection_error()
 
     def read_data(self, dt):
         if not self.arduino:
+            self.display_last_known_data()
             return
+
         try:
             line = self.arduino.readline().decode("utf-8").strip()
             line = line.replace("'", '"')
-            print(line)
-
             if line:
                 data = json.loads(line)
-                self.ids.moisture.text = f"Moisture: {data.get('moisture', 'N/A')}"
-                self.ids.temp.text = f"Temperature: {data.get('temperature', 'N/A')} °C"
-                self.ids.hum.text = f"Humidity: {data.get('humidity', 'N/A')} %"
-                self.ids.light.text = f"Light: {data.get('light', 'N/A')}"
-                self.ids.pump_status.text = (
-                    "Pump: ON" if data.get("pump_power") else "Pump: OFF"
-                )
-                self.ids.connection_status.text = (
-                    f"Reservoir: {data.get('res_level', 'N/A')}%"
-                )
-        except Exception as e:
-            self.ids.connection_status.text = f"Error reading data: {e}"
+                self.last_data = data
+                self.last_successful_read = time()  
 
+                moisture = data.get('moisture', 'N/A')
+                reservoir = data.get('res_level', 'N/A')
+
+                self.ids.moisture.text = str(moisture)
+                self.ids.reservoir.text = str(reservoir)
+
+                if isinstance(moisture, int) or str(moisture).isdigit():
+                    if int(moisture) < MOISTURE_THRESHOLD:
+                        self.ids.status_message.text = "Plant is not happy"
+                        self.ids.status_message.color = (1, 0.4, 0.4, 1)
+                    else:
+                        self.ids.status_message.text = "Plant is happy"
+                        self.ids.status_message.color = (0.2, 0.6, 0.2, 1)
+        except Exception as e:
+            self.show_connection_error()
+            self.display_last_known_data()
+
+    def display_last_known_data(self):
+        if self.last_data:
+            self.ids.moisture.text = str(self.last_data.get('moisture', 'N/A'))
+            self.ids.reservoir.text = str(self.last_data.get('res_level', 'N/A'))
+            self.ids.status_message.text = "Showing last known values"
+            self.ids.status_message.color = (0.6, 0.6, 0.6, 1)
 
 class PlantMonitorUI(App):
     def build(self):
         return SmartGardenUI()
-
 
 if __name__ == "__main__":
     PlantMonitorUI().run()
