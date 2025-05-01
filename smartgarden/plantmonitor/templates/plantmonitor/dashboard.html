@@ -1,5 +1,4 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,16 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="{% static 'plantmonitor/style.css' %}" />
   <title>Smart Garden Dashboard</title>
-
-  <!-- ✅ Auto-refresh only if modal is closed -->
-  <script>
-    setInterval(function(){
-      const modalOpen = document.getElementById('presetModal').style.display === 'flex';
-      if (!modalOpen) {
-        location.reload();
-      }
-    }, 5000);
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
@@ -25,64 +15,30 @@
     {% if not is_connected %}
       <p style="color: red; font-weight: bold;">🔌 Not connected — showing last known data.</p>
     {% endif %}
-
     {% if presets_missing %}
       <p style="color: orange; font-weight: bold;">⚠️ Please set your preset thresholds to begin monitoring.</p>
     {% endif %}
 
-    <div class="card" onclick="toggleTrend('moistureTrend')">
+    <!-- Sensor Cards -->
+    {% for sensor in sensors %}
+    <div class="card" onclick="toggleTrend('{{ sensor.id }}Trend')">
       <div class="reading-row">
-        <div class="reading-label">Soil Moisture</div>
+        <div class="reading-label">{{ sensor.label }}</div>
         <div class="reading-value">
-          {{ latest.soil_moisture }}%
-          {% if latest.soil_moisture < moisture_threshold %}
+          {{ sensor.value }}
+          {% if sensor.warning %}
             <span style="color: red;">⚠ Needs Attention</span>
           {% endif %}
         </div>
       </div>
-      <div style="margin-left: 20px;"><small>Preset: {{ moisture_threshold }}%</small></div>
-      <div id="moistureTrend" class="trend-graph">[Graph showing moisture trends]</div>
-    </div>
-
-    <div class="card" onclick="toggleTrend('temperatureTrend')">
-      <div class="reading-row">
-        <div class="reading-label">Temperature</div>
-        <div class="reading-value">{{ latest.temperature }}°C</div>
+      <div style="margin-left: 20px;"><small>Preset: {{ sensor.preset }}</small></div>
+      <div id="{{ sensor.id }}Trend" class="trend-graph">
+        <canvas id="{{ sensor.id }}Chart"></canvas>
       </div>
-      <div id="temperatureTrend" class="trend-graph">[Graph showing temperature trends]</div>
     </div>
+    {% endfor %}
 
-    <div class="card" onclick="toggleTrend('humidityTrend')">
-      <div class="reading-row">
-        <div class="reading-label">Humidity</div>
-        <div class="reading-value">{{ latest.humidity }}%</div>
-      </div>
-      <div id="humidityTrend" class="trend-graph">[Graph showing humidity trends]</div>
-    </div>
-
-    <div class="card" onclick="toggleTrend('lightTrend')">
-      <div class="reading-row">
-        <div class="reading-label">Light Level</div>
-        <div class="reading-value">{{ latest.light }} lx</div>
-      </div>
-      <div id="lightTrend" class="trend-graph">[Graph showing light level trends]</div>
-    </div>
-
-    <div class="card" onclick="toggleTrend('reservoirTrend')">
-      <div class="reading-row">
-        <div class="reading-label">Water Reservoir</div>
-        <div class="reading-value">
-          {% widthratio latest.reservoir_level 128 100 as reservoir_percent %}
-          {{ reservoir_percent }}%
-          {% if latest.reservoir_level < reservoir_threshold %}
-            <span style="color: red;">⚠ Needs Attention</span>
-          {% endif %}
-        </div>
-      </div>
-      <div style="margin-left: 20px;"><small>Preset: {{ reservoir_threshold }}/128</small></div>
-      <div id="reservoirTrend" class="trend-graph">[Graph showing reservoir trends]</div>
-    </div>
-
+    <!-- Plant Status -->
     <div class="status">
       {% if latest.soil_moisture >= moisture_threshold %}
         🌱 Plant is happy and healthy!
@@ -91,6 +47,7 @@
       {% endif %}
     </div>
 
+    <!-- Pump Controls -->
     <div class="btn-container">
       <form method="POST" action="/api/trigger-pump/" onsubmit="return checkConnection();">
         {% csrf_token %}
@@ -104,29 +61,23 @@
     </div>
   </div>
 
+  <!-- Preset Modal -->
   <div id="presetModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closePresetModal()">&times;</span>
       <h3 style="text-align: left;">Change Preset Values</h3>
-
       <form method="POST">
         {% csrf_token %}
-
-        <h4 style="margin-top: 1rem; text-align: left;">🌱 Soil Moisture</h4>
-        <input type="number" name="moisture_threshold"
-               placeholder="Soil Moisture Threshold"
-               value="{{ moisture_threshold|default:'' }}" required />
-
-        <h4 style="margin-top: 1rem; text-align: left;">🚰 Water Reservoir</h4>
-        <input type="number" name="reservoir_threshold"
-               placeholder="Reservoir Level Threshold"
-               value="{{ reservoir_threshold|default:'' }}" required />
-
+        <h4 style="text-align: left;">🌱 Soil Moisture</h4>
+        <input type="number" name="moisture_threshold" value="{{ moisture_threshold|default:'' }}" required />
+        <h4 style="text-align: left;">🚰 Water Reservoir</h4>
+        <input type="number" name="reservoir_threshold" value="{{ reservoir_threshold|default:'' }}" required />
         <button class="button" style="margin-top: 12px;" type="submit">Save</button>
       </form>
     </div>
   </div>
 
+  <!-- JavaScript -->
   <script>
     function openPresetModal() {
       document.getElementById('presetModal').style.display = 'flex';
@@ -138,28 +89,74 @@
       const el = document.getElementById(id);
       el.style.display = el.style.display === 'block' ? 'none' : 'block';
     }
-
     function checkConnection() {
-  const isConnected = "{{ is_connected|yesno:'true,false' }}";
-  if (isConnected === "false") {
-    document.getElementById("pumpMessage").innerText = "❌ Not connected to plant system.";
-    return false;
-  }
-  setTimeout(() => {
-    document.getElementById("pumpMessage").innerText = "✅ Pump turned on!";
-    setTimeout(() => {
-      document.getElementById("pumpMessage").innerText = "";
-    }, 5000);
-  }, 500);
-  return true;
-}
-
-    let pumpOn = false;
-    function togglePump() {
-      pumpOn = !pumpOn;
-      const btn = document.getElementById("pumpBtn");
-      btn.innerText = pumpOn ? "Turn Pump OFF" : "Turn Pump ON";
+      const isConnected = "{{ is_connected|yesno:'true,false' }}";
+      if (isConnected === "false") {
+        document.getElementById("pumpMessage").innerText = "❌ Not connected to plant system.";
+        return false;
+      }
+      setTimeout(() => {
+        document.getElementById("pumpMessage").innerText = "✅ Pump turned on!";
+        setTimeout(() => {
+          document.getElementById("pumpMessage").innerText = "";
+        }, 5000);
+      }, 500);
+      return true;
     }
+  </script>
+
+  <!-- Chart Script -->
+  <script>
+    const charts = {};
+    const chartConfigs = [
+      { id: 'moistureChart', label: 'Soil Moisture', key: 'soil_moisture' },
+      { id: 'temperatureChart', label: 'Temperature', key: 'temperature' },
+      { id: 'humidityChart', label: 'Humidity', key: 'humidity' },
+      { id: 'lightChart', label: 'Light Level', key: 'light' },
+      { id: 'reservoirChart', label: 'Reservoir Level', key: 'reservoir_level' }
+    ];
+
+    async function fetchChartData() {
+      const res = await fetch('/api/chart-data/');
+      return await res.json();
+    }
+
+    async function updateCharts() {
+      const data = await fetchChartData();
+      chartConfigs.forEach(cfg => {
+        const ctx = document.getElementById(cfg.id).getContext('2d');
+        if (!charts[cfg.id]) {
+          charts[cfg.id] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data.timestamps,
+              datasets: [{
+                label: cfg.label,
+                data: data[cfg.key],
+                borderColor: 'blue',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                x: { title: { display: true, text: 'Time' }},
+                y: { beginAtZero: true }
+              }
+            }
+          });
+        } else {
+          charts[cfg.id].data.labels = data.timestamps;
+          charts[cfg.id].data.datasets[0].data = data[cfg.key];
+          charts[cfg.id].update();
+        }
+      });
+    }
+
+    updateCharts();
+    setInterval(updateCharts, 180000); // every 3 mins
   </script>
 </body>
 </html>
